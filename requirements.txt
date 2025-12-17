@@ -8,3 +8,4 @@ setuptools
 scipy
 stmol
 py3Dmol
+plotly
