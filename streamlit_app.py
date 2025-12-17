@@ -290,8 +290,26 @@ def display_diabetes_docking_procedure():
         
         df_results = pd.DataFrame(st.session_state.docking_results)
         
-        # Format lại bảng
-        st.dataframe(df_results.style.highlight_min(axis=1, color='lightgreen'))
+        # --- BẮT ĐẦU SỬA LỖI ---
+        # 1. Xác định các cột chứa điểm số (tất cả trừ cột 'Ligand')
+        score_cols = [col for col in df_results.columns if col != 'Ligand']
+        
+        # 2. Chuyển đổi dữ liệu cột điểm số sang dạng số thực (float)
+        # Các giá trị "N/A" hoặc "Error" sẽ bị biến thành NaN để không gây lỗi khi so sánh
+        for col in score_cols:
+            df_results[col] = pd.to_numeric(df_results[col], errors='coerce')
+
+        # 3. Hiển thị DataFrame với Style đã sửa
+        # subset=score_cols: Chỉ tô màu các cột điểm số
+        # na_rep="N/A": Hiển thị NaN (lỗi) thành chữ "N/A" cho đẹp
+        st.dataframe(
+            df_results.style.highlight_min(
+                axis=1, 
+                color='lightgreen', 
+                subset=score_cols 
+            ).format(precision=2, na_rep="N/A")
+        )
+        # --- KẾT THÚC SỬA LỖI ---
         
         # Download button
         csv = convert_df_to_csv(df_results)
