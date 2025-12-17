@@ -326,7 +326,7 @@ def main():
     
     initialize_directories()
 
-    st.sidebar.image("https://raw.githubusercontent.com/HenryChritopher02/bace1/main/logo.png", width=300)
+    st.sidebar.image("https://raw.githubusercontent.com/HenryChritopher02/GSJ/main/logo.png", width=300)
     st.sidebar.title("Navigation")
 
     app_mode = st.sidebar.radio(
