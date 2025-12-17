@@ -89,6 +89,7 @@ def run_single_docking(vina_path, receptor_path, ligand_path, config_path, outpu
 
 def display_diabetes_docking_procedure():
     st.header(f"Diabetes Targets Molecular Docking (v{APP_VERSION})")
+    st.image("https://raw.githubusercontent.com/HenryChritopher02/GSJ/main/docking-app.png", use_column_width=True)
     st.markdown("---")
     
     # Khởi tạo session state
@@ -99,11 +100,11 @@ def display_diabetes_docking_procedure():
 
     # --- SIDEBAR: Cấu hình ---
     with st.sidebar:
-        st.header("⚙️ Settings")
-        st.subheader("1. System Check")
-        vina_ready = check_vina_binary(show_success=True)
+        # st.header("⚙️ Settings")
+        # st.subheader("1. System Check")
+        vina_ready = check_vina_binary(show_success=False)
         
-        st.subheader("2. Select Targets")
+        st.subheader("Select Targets")
         st.caption("Choose targets associated with Diabetes Type 2:")
         
         selected_targets_keys = st.multiselect(
@@ -344,7 +345,7 @@ def main():
     
     initialize_directories()
 
-    st.sidebar.image("https://raw.githubusercontent.com/HenryChritopher02/GSJ/main/docking-app.png", width=300)
+    #st.sidebar.image("https://raw.githubusercontent.com/HenryChritopher02/GSJ/main/docking-app.png", width=300)
     st.sidebar.title("Navigation")
 
     app_mode = st.sidebar.radio(
