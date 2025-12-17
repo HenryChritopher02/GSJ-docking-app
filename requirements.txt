@@ -9,3 +9,5 @@ scipy
 stmol
 py3Dmol
 plotly
+ipywidgets
+ipython_genutils
