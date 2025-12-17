@@ -124,7 +124,7 @@ def display_diabetes_docking_procedure():
                         # Tải Receptor (.pdbqt)
                         download_file_from_github(
                             BASE_GITHUB_URL_FOR_DATA, 
-                            f"receptors/{info['pdbqt']}", # Giả định cấu trúc thư mục trên GitHub
+                            f"targets/{info['pdbqt']}", # Giả định cấu trúc thư mục trên GitHub
                             info['pdbqt'], 
                             RECEPTOR_DIR_LOCAL
                         )
