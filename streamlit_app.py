@@ -26,28 +26,28 @@ from utils.app_utils import (
 # Bạn cần đảm bảo tên file trên GitHub khớp với định nghĩa ở đây.
 DIABETES_TARGETS = {
     "PTP1B (1X70)": {
-        "pdbqt": "1X70.pdbqt",
-        "config": "config_1X70.txt",
+        "pdbqt": "3duy.pdbqt",
+        "config": "3duy.txt",
         "desc": "Protein Tyrosine Phosphatase 1B - Insulin signaling regulation"
     },
     "DPP-4 (4A5S)": {
-        "pdbqt": "4A5S.pdbqt",
-        "config": "config_4A5S.txt",
+        "pdbqt": "3ine.pdbqt",
+        "config": "3ine.txt",
         "desc": "Dipeptidyl peptidase-4 - Glucose homeostasis"
     },
     "Alpha-Glucosidase (3A4A)": {
-        "pdbqt": "3A4A.pdbqt",
-        "config": "config_3A4A.txt",
+        "pdbqt": "3inf.pdbqt",
+        "config": "3inf.txt",
         "desc": "Alpha-Glucosidase - Carbohydrate digestion"
     },
     "Alpha-Amylase (1B2Y)": {
-        "pdbqt": "1B2Y.pdbqt",
-        "config": "config_1B2Y.txt",
+        "pdbqt": "3inh.pdbqt",
+        "config": "3inh.txt",
         "desc": "Alpha-Amylase - Starch hydrolysis"
     },
     "PPAR-gamma (2PRG)": {
-        "pdbqt": "2PRG.pdbqt",
-        "config": "config_2PRG.txt",
+        "pdbqt": "3ooz.pdbqt",
+        "config": "3ooz.txt",
         "desc": "Peroxisome proliferator-activated receptor gamma - Insulin sensitization"
     }
 }
