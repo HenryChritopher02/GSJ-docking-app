@@ -6,3 +6,5 @@ joblib
 requests
 setuptools
 scipy
+stmol
+py3Dmol
