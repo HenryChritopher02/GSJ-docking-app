@@ -6,6 +6,9 @@ import shutil
 from pathlib import Path
 import pandas as pd
 import re
+import plotly.express as px
+import py3Dmol
+from stmol import showmol
 
 # Giữ lại các import từ file utils cục bộ để tận dụng cấu trúc hiện có
 # Lưu ý: Vì logic đơn giản hóa, ta sẽ không dùng hết tất cả biến, nhưng giữ lại import để tránh lỗi
@@ -86,24 +89,40 @@ def run_single_docking(vina_path, receptor_path, ligand_path, config_path, outpu
     # Chạy lệnh
     proc = subprocess.run(cmd, capture_output=True, text=True)
     return proc.returncode, proc.stdout, proc.stderr
+    
+def view_complex(protein_path, ligand_path):
+    """
+    Generates a 3D visualization of the Protein-Ligand complex
+    """
+    try:
+        with open(protein_path, 'r') as f:
+            protein_data = f.read()
+        with open(ligand_path, 'r') as f:
+            ligand_data = f.read()
 
+        view = py3Dmol.view(width=800, height=500)
+        view.addModelsAsFrames(protein_data)
+        view.setStyle({'model': -1}, {"cartoon": {'color': 'spectrum'}})
+        view.addModelsAsFrames(ligand_data)
+        view.setStyle({'model': -1}, {"stick": {'colorscheme': 'greenCarbon'}})
+        view.zoomTo()
+        showmol(view, height=500, width=800)
+    except FileNotFoundError:
+        st.error("Could not find PDBQT files for visualization.")
+        
 def display_diabetes_docking_procedure():
     st.header(f"Diabetes Targets Molecular Docking (v{APP_VERSION})")
     st.image("https://raw.githubusercontent.com/HenryChritopher02/GSJ/main/docking-app.png", use_column_width=True)
-    st.markdown("---")
     
-    # Khởi tạo session state
+    # Initialize session state
     if 'docking_results' not in st.session_state:
         st.session_state.docking_results = []
     if 'prepared_ligand_paths' not in st.session_state:
         st.session_state.prepared_ligand_paths = []
 
-    # --- SIDEBAR: Cấu hình ---
+    # --- SIDEBAR SETTINGS (Keep this logic) ---
     with st.sidebar:
-        # st.header("⚙️ Settings")
-        # st.subheader("1. System Check")
         vina_ready = check_vina_binary(show_success=False)
-        
         st.subheader("Select Targets")
         st.caption("Choose targets associated with Diabetes Type 2:")
         
@@ -113,7 +132,6 @@ def display_diabetes_docking_procedure():
             default=[list(DIABETES_TARGETS.keys())[0]]
         )
         
-        # Nút tải dữ liệu Receptor
         if st.button("Fetch Selected Targets Data", key="fetch_targets_btn"):
             if not selected_targets_keys:
                 st.warning("Please select at least one target.")
@@ -122,206 +140,168 @@ def display_diabetes_docking_procedure():
                     download_count = 0
                     for key in selected_targets_keys:
                         info = DIABETES_TARGETS[key]
-                        # Tải Receptor (.pdbqt)
-                        download_file_from_github(
-                            BASE_GITHUB_URL_FOR_DATA, 
-                            f"targets/{info['pdbqt']}", # Giả định cấu trúc thư mục trên GitHub
-                            info['pdbqt'], 
-                            RECEPTOR_DIR_LOCAL
-                        )
-                        # Tải Config (.txt)
-                        download_file_from_github(
-                            BASE_GITHUB_URL_FOR_DATA, 
-                            f"configs/{info['config']}", 
-                            info['config'], 
-                            CONFIG_DIR_LOCAL
-                        )
+                        download_file_from_github(BASE_GITHUB_URL_FOR_DATA, f"targets/{info['pdbqt']}", info['pdbqt'], RECEPTOR_DIR_LOCAL)
+                        download_file_from_github(BASE_GITHUB_URL_FOR_DATA, f"configs/{info['config']}", info['config'], CONFIG_DIR_LOCAL)
                         download_count += 1
                     st.success(f"Successfully checked/downloaded data for {download_count} targets.")
 
-    # --- MAIN UI ---
-    
-    # 1. INPUT LIGAND SECTION
-    st.subheader("📂 1. Ligand Input")
-    st.info("Please upload your prepared ligands. Accepted formats: `.pdbqt` (single/multiple) or `.zip` (containing .pdbqt files).")
-    
-    input_method = st.radio("Upload Method:", ("Upload PDBQT File(s)", "Upload ZIP Archive"), horizontal=True)
-    
-    new_ligands = []
-    
-    if input_method == "Upload PDBQT File(s)":
-        uploaded_files = st.file_uploader("Select .pdbqt files:", type="pdbqt", accept_multiple_files=True)
-        if uploaded_files:
-            if st.button("Process PDBQT Files"):
+    # --- NEW TABS LAYOUT ---
+    tab1, tab2, tab3 = st.tabs(["📂 1. Ligand Input", "🚀 2. Run Docking", "📊 3. Analysis & 3D"])
+
+    # --- TAB 1: INPUT ---
+    with tab1:
+        st.info("Upload ligands in .pdbqt or .zip format.")
+        input_method = st.radio("Upload Method:", ("Upload PDBQT File(s)", "Upload ZIP Archive"), horizontal=True)
+        new_ligands = []
+        
+        if input_method == "Upload PDBQT File(s)":
+            uploaded_files = st.file_uploader("Select .pdbqt files:", type="pdbqt", accept_multiple_files=True)
+            if uploaded_files and st.button("Process PDBQT Files"):
                 for up_file in uploaded_files:
                     dest_path = LIGAND_PREP_DIR_LOCAL / up_file.name
-                    with open(dest_path, "wb") as f:
-                        f.write(up_file.getbuffer())
+                    with open(dest_path, "wb") as f: f.write(up_file.getbuffer())
                     new_ligands.append(str(dest_path))
                 st.success(f"Added {len(new_ligands)} ligands.")
 
-    elif input_method == "Upload ZIP Archive":
-        uploaded_zip = st.file_uploader("Select .zip file:", type="zip")
-        if uploaded_zip:
-            if st.button("Process ZIP File"):
-                # Xóa thư mục giải nén cũ nếu có
-                if ZIP_EXTRACT_DIR_LOCAL.exists():
-                    shutil.rmtree(ZIP_EXTRACT_DIR_LOCAL)
+        elif input_method == "Upload ZIP Archive":
+            uploaded_zip = st.file_uploader("Select .zip file:", type="zip")
+            if uploaded_zip and st.button("Process ZIP File"):
+                if ZIP_EXTRACT_DIR_LOCAL.exists(): shutil.rmtree(ZIP_EXTRACT_DIR_LOCAL)
                 ZIP_EXTRACT_DIR_LOCAL.mkdir(parents=True, exist_ok=True)
-                
-                # Lưu file zip tạm
                 temp_zip_path = LIGAND_UPLOAD_TEMP_DIR / uploaded_zip.name
-                with open(temp_zip_path, "wb") as f:
-                    f.write(uploaded_zip.getbuffer())
-                
-                # Giải nén
+                with open(temp_zip_path, "wb") as f: f.write(uploaded_zip.getbuffer())
                 try:
                     with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
                         zip_ref.extractall(ZIP_EXTRACT_DIR_LOCAL)
-                    
-                    # Tìm tất cả file pdbqt trong thư mục giải nén
                     for item in ZIP_EXTRACT_DIR_LOCAL.rglob("*.pdbqt"):
                         dest_path = LIGAND_PREP_DIR_LOCAL / item.name
                         shutil.copy(item, dest_path)
                         new_ligands.append(str(dest_path))
-                    
-                    st.success(f"Extracted and added {len(new_ligands)} ligands from ZIP.")
-                except Exception as e:
-                    st.error(f"Error processing ZIP: {e}")
-                finally:
+                    st.success(f"Extracted and added {len(new_ligands)} ligands.")
+                except Exception as e: st.error(f"Error processing ZIP: {e}")
+                finally: 
                     if temp_zip_path.exists(): temp_zip_path.unlink()
 
-    # Cập nhật danh sách ligand vào session state
-    if new_ligands:
-        current_paths = set(st.session_state.prepared_ligand_paths)
-        for p in new_ligands:
-            current_paths.add(p)
-        st.session_state.prepared_ligand_paths = list(current_paths)
+        if new_ligands:
+            current_paths = set(st.session_state.prepared_ligand_paths)
+            for p in new_ligands: current_paths.add(p)
+            st.session_state.prepared_ligand_paths = list(current_paths)
 
-    # Hiển thị trạng thái Ligand hiện tại
-    if st.session_state.prepared_ligand_paths:
-        with st.expander(f"✅ {len(st.session_state.prepared_ligand_paths)} Ligands Ready for Docking", expanded=False):
-            for p in st.session_state.prepared_ligand_paths:
-                st.text(Path(p).name)
-        
-        if st.button("Clear Ligand List", key="clear_lig_list"):
-            st.session_state.prepared_ligand_paths = []
-            st.experimental_rerun()
-    else:
-        st.warning("No ligands loaded yet.")
+        if st.session_state.prepared_ligand_paths:
+            st.write(f"**Current Ligands ({len(st.session_state.prepared_ligand_paths)}):**")
+            with st.expander("View List"):
+                for p in st.session_state.prepared_ligand_paths: st.text(Path(p).name)
+            if st.button("Clear Ligand List"):
+                st.session_state.prepared_ligand_paths = []
+                st.experimental_rerun()
 
-    st.markdown("---")
+    # --- TAB 2: EXECUTION ---
+    with tab2:
+        st.write("### Simulation Controls")
+        if st.button("Start Screening", type="primary"):
+            if not vina_ready: st.error("Vina executable is missing.")
+            elif not selected_targets_keys: st.error("No targets selected.")
+            elif not st.session_state.prepared_ligand_paths: st.error("No ligands loaded.")
+            else:
+                targets_ready = []
+                for t_key in selected_targets_keys:
+                    t_info = DIABETES_TARGETS[t_key]
+                    r_path = RECEPTOR_DIR_LOCAL / t_info['pdbqt']
+                    c_path = CONFIG_DIR_LOCAL / t_info['config']
+                    if r_path.exists() and c_path.exists(): targets_ready.append((t_key, r_path, c_path))
+                    else: st.error(f"Files missing for {t_key}.")
+                
+                if len(targets_ready) == len(selected_targets_keys):
+                    st.info(f"Docking {len(st.session_state.prepared_ligand_paths)} ligands vs {len(targets_ready)} targets.")
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    total_tasks = len(st.session_state.prepared_ligand_paths) * len(targets_ready)
+                    completed_tasks = 0
+                    results_data = []
+                    DOCKING_OUTPUT_DIR_LOCAL.mkdir(parents=True, exist_ok=True)
 
-    # 2. DOCKING EXECUTION SECTION
-    st.subheader("🚀 2. Run Docking")
-    
-    if st.button("Start Screening", type="primary"):
-        # Kiểm tra điều kiện
-        if not vina_ready:
-            st.error("Vina executable is missing.")
-        elif not selected_targets_keys:
-            st.error("No targets selected.")
-        elif not st.session_state.prepared_ligand_paths:
-            st.error("No ligands loaded.")
-        else:
-            # Kiểm tra file Target có tồn tại không
-            targets_ready = []
-            for t_key in selected_targets_keys:
-                t_info = DIABETES_TARGETS[t_key]
-                r_path = RECEPTOR_DIR_LOCAL / t_info['pdbqt']
-                c_path = CONFIG_DIR_LOCAL / t_info['config']
-                if r_path.exists() and c_path.exists():
-                    targets_ready.append((t_key, r_path, c_path))
-                else:
-                    st.error(f"Files missing for {t_key}. Please click 'Fetch Selected Targets Data' in sidebar.")
+                    for lig_path_str in st.session_state.prepared_ligand_paths:
+                        lig_path = Path(lig_path_str)
+                        lig_name = lig_path.stem
+                        row_data = {"Ligand": lig_name}
+                        
+                        for t_name, r_path, c_path in targets_ready:
+                            status_text.text(f"Docking {lig_name} against {t_name}...")
+                            out_filename = f"{lig_name}_{DIABETES_TARGETS[t_name]['pdbqt'].replace('.pdbqt', '')}_out.pdbqt"
+                            out_path = DOCKING_OUTPUT_DIR_LOCAL / out_filename
+                            
+                            ret_code, stdout, stderr = run_single_docking(VINA_PATH_LOCAL, r_path, lig_path, c_path, out_path)
+                            
+                            if ret_code == 0 and out_path.exists():
+                                score = parse_vina_score_from_file(out_path)
+                                row_data[t_name] = score if score is not None else "N/A"
+                            else: row_data[t_name] = "Error"
+                            completed_tasks += 1
+                            progress_bar.progress(completed_tasks / total_tasks)
+                        results_data.append(row_data)
+
+                    st.session_state.docking_results = results_data
+                    status_text.text("Docking completed!")
+                    st.success("Run Finished.")
+                    st.balloons()
+
+    # --- TAB 3: ANALYSIS ---
+    with tab3:
+        if st.session_state.docking_results:
+            df_results = pd.DataFrame(st.session_state.docking_results)
+            score_cols = [col for col in df_results.columns if col != 'Ligand']
+            for col in score_cols: df_results[col] = pd.to_numeric(df_results[col], errors='coerce')
+
+            # 1. HEATMAP TABLE
+            st.subheader("🔥 Affinity Heatmap")
+            st.dataframe(
+                df_results.style.background_gradient(
+                    cmap='RdYlGn_r', subset=score_cols, vmin=-12, vmax=-4
+                ).format(precision=2, na_rep="N/A"),
+                use_container_width=True
+            )
             
-            if len(targets_ready) == len(selected_targets_keys):
-                st.info(f"Starting docking: {len(st.session_state.prepared_ligand_paths)} ligands vs {len(targets_ready)} targets.")
+            col_dl, col_chart = st.columns([1, 2])
+            with col_dl:
+                csv = convert_df_to_csv(df_results)
+                st.download_button("Download CSV", csv, "docking_results.csv", "text/csv")
+
+            # 2. DISTRIBUTION CHART
+            st.markdown("---")
+            st.subheader("📈 Score Distribution")
+            try:
+                df_melted = df_results.melt(id_vars=['Ligand'], var_name='Target', value_name='Score')
+                df_melted = df_melted.dropna()
+                fig = px.box(df_melted, x='Target', y='Score', points="all", color='Target', title="Binding Energy Distribution")
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception as e:
+                st.warning("Not enough data for chart.")
+
+            # 3. 3D VISUALIZATION
+            st.markdown("---")
+            st.subheader("🧬 3D Complex Visualization")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                selected_ligand = st.selectbox("Select Ligand:", df_results['Ligand'].unique())
+            with c2:
+                selected_target = st.selectbox("Select Target:", score_cols)
+
+            if st.button("Render 3D Structure"):
+                target_info = DIABETES_TARGETS[selected_target]
+                receptor_file = RECEPTOR_DIR_LOCAL / target_info['pdbqt']
                 
-                # Tạo thanh tiến trình
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                total_tasks = len(st.session_state.prepared_ligand_paths) * len(targets_ready)
-                completed_tasks = 0
-                results_data = []
+                # Reconstruct output filename
+                out_filename = f"{selected_ligand}_{target_info['pdbqt'].replace('.pdbqt', '')}_out.pdbqt"
+                docked_ligand_file = DOCKING_OUTPUT_DIR_LOCAL / out_filename
 
-                # Tạo thư mục output
-                DOCKING_OUTPUT_DIR_LOCAL.mkdir(parents=True, exist_ok=True)
-
-                for lig_path_str in st.session_state.prepared_ligand_paths:
-                    lig_path = Path(lig_path_str)
-                    lig_name = lig_path.stem
-                    
-                    row_data = {"Ligand": lig_name}
-                    
-                    for t_name, r_path, c_path in targets_ready:
-                        status_text.text(f"Docking {lig_name} against {t_name}...")
-                        
-                        # Định nghĩa tên file output
-                        out_filename = f"{lig_name}_{DIABETES_TARGETS[t_name]['pdbqt'].replace('.pdbqt', '')}_out.pdbqt"
-                        out_path = DOCKING_OUTPUT_DIR_LOCAL / out_filename
-                        
-                        # Chạy Docking
-                        ret_code, stdout, stderr = run_single_docking(
-                            VINA_PATH_LOCAL, r_path, lig_path, c_path, out_path
-                        )
-                        
-                        if ret_code == 0 and out_path.exists():
-                            score = parse_vina_score_from_file(out_path)
-                            row_data[t_name] = score if score is not None else "N/A"
-                        else:
-                            row_data[t_name] = "Error"
-                            print(f"Error docking {lig_name} vs {t_name}: {stderr}")
-
-                        completed_tasks += 1
-                        progress_bar.progress(completed_tasks / total_tasks)
-                    
-                    results_data.append(row_data)
-
-                st.session_state.docking_results = results_data
-                status_text.text("Docking completed!")
-                st.success("Docking Run Finished.")
-                st.balloons()
-
-    # 3. RESULTS SECTION
-    if st.session_state.docking_results:
-        st.markdown("---")
-        st.subheader("📊 3. Docking Results Summary (kcal/mol)")
-        
-        df_results = pd.DataFrame(st.session_state.docking_results)
-        
-        # --- BẮT ĐẦU SỬA LỖI ---
-        # 1. Xác định các cột chứa điểm số (tất cả trừ cột 'Ligand')
-        score_cols = [col for col in df_results.columns if col != 'Ligand']
-        
-        # 2. Chuyển đổi dữ liệu cột điểm số sang dạng số thực (float)
-        # Các giá trị "N/A" hoặc "Error" sẽ bị biến thành NaN để không gây lỗi khi so sánh
-        for col in score_cols:
-            df_results[col] = pd.to_numeric(df_results[col], errors='coerce')
-
-        # 3. Hiển thị DataFrame với Style đã sửa
-        # subset=score_cols: Chỉ tô màu các cột điểm số
-        # na_rep="N/A": Hiển thị NaN (lỗi) thành chữ "N/A" cho đẹp
-        st.dataframe(
-            df_results.style.highlight_min(
-                axis=1, 
-                color='lightgreen', 
-                subset=score_cols 
-            ).format(precision=2, na_rep="N/A")
-        )
-        # --- KẾT THÚC SỬA LỖI ---
-        
-        # Download button
-        csv = convert_df_to_csv(df_results)
-        st.download_button(
-            label="Download Results as CSV",
-            data=csv,
-            file_name="diabetes_docking_results.csv",
-            mime="text/csv",
-        )
-        
-        st.caption("Lower scores indicate better binding affinity.")
+                if receptor_file.exists() and docked_ligand_file.exists():
+                    st.write(f"Visualizing: **{selected_ligand}** bound to **{selected_target}**")
+                    view_complex(str(receptor_file), str(docked_ligand_file))
+                else:
+                    st.error(f"Output file not found: {out_filename}. Did the docking finish successfully?")
+        else:
+            st.info("No docking results to analyze yet. Please run docking in Tab 2.")
 
 def display_about_page():
     st.header("About Diabetes Docking App")
