@@ -299,10 +299,10 @@ def display_diabetes_docking_procedure():
             st.info("No docking results to analyze yet. Please run docking in Tab 2.")
 
 def display_about_page():
-    st.header("About Diabetes Docking App")
+    st.header("About T2DM Docking App")
     st.markdown(f"**Molecular Docking Model System Targeting Key Proteins Involved In T2DM**")
     st.markdown("""
-    This application is specialized for screening compounds against key therapeutic targets for Type 2 Diabetes.
+    This application is specialized for screening compounds against key therapeutic targets for T2DM.
     
     **Features:**
     - **Focused Targets:** Pre-configured screening against 5 major diabetes-related proteins:
