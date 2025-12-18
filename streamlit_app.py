@@ -106,7 +106,7 @@ def view_complex(protein_path, ligand_path):
         st.error("Could not find PDBQT files for visualization.")
         
 def display_diabetes_docking_procedure():
-    st.header(f"Diabetes Targets Molecular Docking (v{APP_VERSION})")
+    st.header(f"Molecular Docking Model System Targeting Key Proteins Involved In T2DM")
     st.image("https://raw.githubusercontent.com/HenryChritopher02/GSJ/main/docking-app.png", use_column_width=True)
     
     # Initialize session state
@@ -300,17 +300,17 @@ def display_diabetes_docking_procedure():
 
 def display_about_page():
     st.header("About Diabetes Docking App")
-    st.markdown(f"**Diabetes Molecular Docking Suite v{APP_VERSION}**")
+    st.markdown(f"**Molecular Docking Model System Targeting Key Proteins Involved In T2DM**")
     st.markdown("""
     This application is specialized for screening compounds against key therapeutic targets for Type 2 Diabetes.
     
     **Features:**
     - **Focused Targets:** Pre-configured screening against 5 major diabetes-related proteins:
-        1. **PTP1B (1X70):** Negative regulator of insulin signaling.
-        2. **DPP-4 (4A5S):** Enzyme that degrades incretins.
-        3. **Alpha-Glucosidase (3A4A):** Enzyme involved in carbohydrate digestion.
-        4. **Alpha-Amylase (1B2Y):** Enzyme involved in starch breakdown.
-        5. **PPAR-gamma (2PRG):** Nuclear receptor regulating fatty acid storage and glucose metabolism.
+        1. **DPP-4 (4A5S):** Enzyme that degrades incretin hormones.
+        2. **GLP1-R (6X19):** Receptor that stimulates glucose-dependent insulin secretion.
+        3. **PPAR-γ (5Y2O):** Nuclear receptor regulating fatty acid storage and glucose metabolism.
+        4. **SGLT2 (8HEZ):** Transporter responsible for glucose reabsorption in the kidneys.
+        5. **SUR1 (7S5V):** Regulatory subunit of K-ATP channels controlling insulin release.
     - **Simplified Input:** Direct upload of `.pdbqt` files or `.zip` archives.
     - **Automated Vina:** Runs AutoDock Vina automatically for all combinations.
     """)
