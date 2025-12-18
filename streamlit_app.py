@@ -28,23 +28,23 @@ from utils.app_utils import (
 # Giả định các file này nằm trong thư mục 'receptors' và 'configs' trên GitHub
 # Bạn cần đảm bảo tên file trên GitHub khớp với định nghĩa ở đây.
 DIABETES_TARGETS = {
-    "DPP-4": {
+    "DPP-4 (4A5S)": {
         "pdbqt": "dpp4.pdbqt",
         "config": "dpp4.txt"
     },
-    "GLP1-R": {
+    "GLP1-R (6X19)": {
         "pdbqt": "glp1r.pdbqt",
         "config": "glp1r.txt"
     },
-    "PPAR-γ": {
+    "PPAR-γ (5Y2O)": {
         "pdbqt": "pparg.pdbqt",
         "config": "pparg.txt"
     },
-    "SGLT2": {
+    "SGLT2 (8HEZ)": {
         "pdbqt": "sglt2.pdbqt",
         "config": "sglt2.txt"
     },
-    "SUR1": {
+    "SUR1 (7S5V)": {
         "pdbqt": "sur1.pdbqt",
         "config": "sur1.txt"
     }
