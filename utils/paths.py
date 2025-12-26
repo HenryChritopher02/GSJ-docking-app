@@ -12,7 +12,7 @@ RECEPTOR_SUBDIR_GH = "ensemble_protein/"
 CONFIG_SUBDIR_GH = "config/"
 
 APP_ROOT = Path(".") # Assumes streamlit_app.py is in the root of your project
-ENSEMBLE_DOCKING_DIR_LOCAL = APP_ROOT / "ensemble_docking"
+ENSEMBLE_DOCKING_DIR_LOCAL = APP_ROOT / "utils"
 LIGAND_PREPROCESSING_SUBDIR_LOCAL = ENSEMBLE_DOCKING_DIR_LOCAL / "ligand_preprocessing"
 SCRUB_PY_LOCAL_PATH = LIGAND_PREPROCESSING_SUBDIR_LOCAL / "scrub.py"
 MK_PREPARE_LIGAND_PY_LOCAL_PATH = LIGAND_PREPROCESSING_SUBDIR_LOCAL / "mk_prepare_ligand.py"
@@ -29,5 +29,6 @@ LIGAND_PREP_DIR_LOCAL = WORKSPACE_PARENT_DIR / "prepared_ligands"
 LIGAND_UPLOAD_TEMP_DIR = WORKSPACE_PARENT_DIR / "uploaded_ligands_temp"
 ZIP_EXTRACT_DIR_LOCAL = WORKSPACE_PARENT_DIR / "zip_extracted_ligands"
 DOCKING_OUTPUT_DIR_LOCAL = APP_ROOT / "autodock_outputs"
+
 
 
