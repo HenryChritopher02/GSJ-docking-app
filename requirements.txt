@@ -12,3 +12,5 @@ plotly
 ipywidgets
 ipython_genutils
 matplotlib
+scikit-learn
+streamlit-ketcher
