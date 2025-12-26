@@ -19,3 +19,5 @@ py3Dmol
 plotly
 ipywidgets
 ipython_genutils
+xgboost
+lightgbm
