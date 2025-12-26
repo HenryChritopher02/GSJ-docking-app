@@ -101,47 +101,52 @@ def calculate_ecfp4(smiles):
         return None
     return None
 
-def convert_pdbqt_to_sdf(pdbqt_path, output_sdf_path):
+def convert_pdbqt_to_pdb(pdbqt_path, output_pdb_path):
     """
-    Extracts the first pose from a PDBQT file and converts it to SDF.
+    Extracts the first pose from a PDBQT file and converts it to PDB format
+    by stripping AutoDock-specific columns (Charge/AtomType).
     """
     try:
-        # 1. Read file and extract only the first MODEL
         with open(pdbqt_path, 'r') as f:
             lines = f.readlines()
         
-        first_model_lines = []
+        pdb_lines = []
         in_model = False
         model_found = False
         
         for line in lines:
+            # Handle Models: Only take the first one
             if line.startswith("MODEL"):
                 in_model = True
                 model_found = True
-            if in_model or not model_found: # Keep headers or inside model
-                first_model_lines.append(line)
+                continue
             if line.startswith("ENDMDL"):
-                break # Stop after first model
-        
-        pdbqt_block = "".join(first_model_lines)
-        
-        # 2. Parse using Meeko from the string block
-        pdbqt_mol = PDBQTMolecule(pdbqt_block, skip_typing=True)
-        
-        # 3. Convert to RDKit Mol
-        rdkit_mol = pdbqt_mol.export_rdkit_mol()
-        
-        if rdkit_mol:
-            # 4. Write to SDF
-            # Ensure 3D conformation is preserved
-            with Chem.SDWriter(str(output_sdf_path)) as w:
-                w.write(rdkit_mol)
-            return True
+                break 
+            
+            # Process ATOM/HETATM lines
+            if line.startswith("ATOM") or line.startswith("HETATM"):
+                # PDBQT format extends PDB columns. 
+                # Standard PDB lines are usually ~80 chars. 
+                # AutoDock adds charge/type info after column 66.
+                # We slice up to column 66 to make it a valid PDB line, 
+                # preserving coordinates (30-54) and occupancy/b-factor if present.
+                # We can also explicitly reset Occupancy(55-60) and B-Factor(61-66) to 1.00/0.00 if needed,
+                # but simple slicing is usually sufficient for visualization.
+                clean_line = line[:66] + "\n"
+                pdb_lines.append(clean_line)
+            elif not model_found and not line.startswith("TORSDOF"): 
+                # Keep header lines if they exist before MODEL
+                pdb_lines.append(line)
+
+        # Write to PDB file
+        with open(output_pdb_path, 'w') as f:
+            f.writelines(pdb_lines)
+            
+        return True
             
     except Exception as e:
-        print(f"SDF Conversion Error: {e}")
-        
-    return False
+        print(f"PDB Conversion Error: {e}")
+        return False
 
 def parse_vina_score_from_file(file_path):
     """
@@ -510,32 +515,23 @@ def display_diabetes_docking_procedure():
             if st.button("Render 3D Structure"):
                 target_info = DIABETES_TARGETS[selected_target]
                 receptor_file = RECEPTOR_DIR_LOCAL / target_info['pdbqt']
-                
-                # Reconstruct output filename
                 out_filename = f"{selected_ligand}_{target_info['pdbqt'].replace('.pdbqt', '')}_out.pdbqt"
                 docked_ligand_file = DOCKING_OUTPUT_DIR_LOCAL / out_filename
 
                 if receptor_file.exists() and docked_ligand_file.exists():
-                    sdf_viz_file = docked_ligand_file.with_suffix(".sdf")
+                    # Output path for PDB
+                    pdb_viz_file = docked_ligand_file.with_suffix(".pdb")
                     
-                    with st.spinner("Converting to SDF for enhanced visualization..."):
-                        convert_success = convert_pdbqt_to_sdf(docked_ligand_file, sdf_viz_file)
+                    with st.spinner("Extracting best pose & converting to PDB..."):
+                        # Use the new PDB conversion function
+                        convert_success = convert_pdbqt_to_pdb(docked_ligand_file, pdb_viz_file)
                     
                     if convert_success:
-                        st.write(f"Visualizing: **{selected_ligand}** bound to **{selected_target}**")
-                        view_complex(str(receptor_file), str(sdf_viz_file))
+                        st.write(f"Visualizing: **{selected_ligand}** (Best Pose) bound to **{selected_target}**")
+                        # Pass the new PDB file to the viewer
+                        view_complex(str(receptor_file), str(pdb_viz_file))
                     else:
-                        # Fallback: Create a temp PDBQT with ONLY the first pose
-                        st.warning("SDF conversion failed. Showing best pose in raw PDBQT format.")
-                        temp_1pose_pdbqt = docked_ligand_file.with_name(f"{docked_ligand_file.stem}_pose1.pdbqt")
-                        
-                        # Extract 1st pose manually for fallback
-                        with open(docked_ligand_file, 'r') as f_in, open(temp_1pose_pdbqt, 'w') as f_out:
-                            for line in f_in:
-                                f_out.write(line)
-                                if line.startswith("ENDMDL"): break
-                        
-                        view_complex(str(receptor_file), str(temp_1pose_pdbqt))
+                        st.error("Visualization preparation failed.")
                 else:
                     st.error(f"Output file not found: {out_filename}. Did the docking finish successfully?")
         else:
