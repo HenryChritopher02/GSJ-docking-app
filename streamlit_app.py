@@ -14,6 +14,7 @@ from streamlit_ketcher import st_ketcher # For drawing molecules
 import plotly.express as px
 import py3Dmol
 from stmol import showmol
+from meeko import MoleculePreparation, PDBQTMolecule # FIX: Added PDBQTMolecule for reading
 
 # Giữ lại các import từ file utils cục bộ để tận dụng cấu trúc hiện có
 # Lưu ý: Vì logic đơn giản hóa, ta sẽ không dùng hết tất cả biến, nhưng giữ lại import để tránh lỗi
@@ -99,7 +100,26 @@ def calculate_ecfp4(smiles):
     except:
         return None
     return None
-    
+
+def convert_pdbqt_to_sdf(pdbqt_path, output_sdf_path):
+    """
+    Converts a PDBQT file to SDF format using Meeko and RDKit.
+    SDF is preferred over Mol2 for RDKit compatibility and 3Dmol.js visualization.
+    """
+    try:
+        # Use Meeko to parse PDBQT correctly (handles AutoDock atom types)
+        pdbqt_mol = PDBQTMolecule.from_file(str(pdbqt_path), skip_typing=True)
+        rdkit_mol = pdbqt_mol.export_rdkit_mol()
+        
+        if rdkit_mol:
+            # Write to SDF (V3000 ensures 3D coords are handled well)
+            with Chem.SDWriter(str(output_sdf_path)) as w:
+                w.write(rdkit_mol)
+            return True
+    except Exception as e:
+        print(f"SDF Conversion Error: {e}")
+    return False
+
 def parse_vina_score_from_file(file_path):
     """
     Hàm đọc file output PDBQT và lấy điểm năng lượng liên kết thấp nhất (best affinity).
@@ -137,23 +157,27 @@ def run_single_docking(vina_path, receptor_path, ligand_path, config_path, outpu
     
 def view_complex(protein_path, ligand_path):
     """
-    Generates a 3D visualization of the Protein-Ligand complex
+    Generates a 3D visualization. Detects format based on extension.
     """
     try:
-        with open(protein_path, 'r') as f:
-            protein_data = f.read()
-        with open(ligand_path, 'r') as f:
-            ligand_data = f.read()
+        with open(protein_path, 'r') as f: protein_data = f.read()
+        with open(ligand_path, 'r') as f: ligand_data = f.read()
+        
+        # Detect ligand format (pdbqt, sdf, mol2)
+        ligand_format = Path(ligand_path).suffix.strip('.').lower()
 
         view = py3Dmol.view(width=800, height=500)
         view.addModelsAsFrames(protein_data)
         view.setStyle({'model': -1}, {"cartoon": {'color': 'spectrum'}})
-        view.addModelsAsFrames(ligand_data)
+        
+        # Add ligand with correct format
+        view.addModel(ligand_data, ligand_format)
         view.setStyle({'model': -1}, {"stick": {'colorscheme': 'greenCarbon'}})
+        
         view.zoomTo()
         showmol(view, height=500, width=800)
     except FileNotFoundError:
-        st.error("Could not find PDBQT files for visualization.")
+        st.error("Could not find files for visualization.")
 
 def display_ml_prediction_procedure():
     st.header("🔮 Machine Learning Activity Prediction")
@@ -469,8 +493,17 @@ def display_diabetes_docking_procedure():
                 docked_ligand_file = DOCKING_OUTPUT_DIR_LOCAL / out_filename
 
                 if receptor_file.exists() and docked_ligand_file.exists():
-                    st.write(f"Visualizing: **{selected_ligand}** bound to **{selected_target}**")
-                    view_complex(str(receptor_file), str(docked_ligand_file))
+                    sdf_viz_file = docked_ligand_file.with_suffix(".sdf")
+                    
+                    with st.spinner("Converting to SDF for enhanced visualization..."):
+                        convert_success = convert_pdbqt_to_sdf(docked_ligand_file, sdf_viz_file)
+                    
+                    if convert_success:
+                        st.write(f"Visualizing: **{selected_ligand}** bound to **{selected_target}**")
+                        view_complex(str(receptor_file), str(sdf_viz_file))
+                    else:
+                        st.warning("Conversion to SDF failed. Falling back to raw PDBQT visualization (bonds may be missing).")
+                        view_complex(str(receptor_file), str(docked_ligand_file))
                 else:
                     st.error(f"Output file not found: {out_filename}. Did the docking finish successfully?")
         else:
