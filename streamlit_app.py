@@ -157,7 +157,7 @@ def view_complex(protein_path, ligand_path):
 
 def display_ml_prediction_procedure():
     st.header("🔮 Machine Learning Activity Prediction")
-    st.info("Predict bioactivity (Active/Inactive) against DPPIV, PPARG, and GLP-1R using Random Forest models trained on ECFP4 fingerprints.")
+    st.info("Predict bioactivity (Active/Inactive) against DPPIV, PPARG, and GLP-1R using Machine Learning Models trained on ECFP4 fingerprints.")
     
     
 
