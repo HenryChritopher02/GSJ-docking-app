@@ -16,3 +16,4 @@ scikit-learn
 streamlit-ketcher
 molscrub
 meeko
+scrubadub
