@@ -1,4 +1,5 @@
 streamlit
+gemmi
 meeko
 mordred
 numpy
