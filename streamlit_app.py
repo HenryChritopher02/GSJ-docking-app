@@ -54,7 +54,7 @@ DIABETES_TARGETS = {
 
 # Define ML Models (Ensure these exist in your GitHub 'models/' folder)
 ML_MODELS_CONFIG = {
-    "DPP-4": "dpp4.pkl",
+    "DPP-4": "dppiv.pkl",
     "PPAR-γ": "pparg.pkl",
     "GLP1-R": "glp1r.pkl"
 }
