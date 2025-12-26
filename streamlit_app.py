@@ -103,21 +103,44 @@ def calculate_ecfp4(smiles):
 
 def convert_pdbqt_to_sdf(pdbqt_path, output_sdf_path):
     """
-    Converts a PDBQT file to SDF format using Meeko and RDKit.
-    SDF is preferred over Mol2 for RDKit compatibility and 3Dmol.js visualization.
+    Extracts the first pose from a PDBQT file and converts it to SDF.
     """
     try:
-        # Use Meeko to parse PDBQT correctly (handles AutoDock atom types)
-        pdbqt_mol = PDBQTMolecule.from_file(str(pdbqt_path), skip_typing=True)
+        # 1. Read file and extract only the first MODEL
+        with open(pdbqt_path, 'r') as f:
+            lines = f.readlines()
+        
+        first_model_lines = []
+        in_model = False
+        model_found = False
+        
+        for line in lines:
+            if line.startswith("MODEL"):
+                in_model = True
+                model_found = True
+            if in_model or not model_found: # Keep headers or inside model
+                first_model_lines.append(line)
+            if line.startswith("ENDMDL"):
+                break # Stop after first model
+        
+        pdbqt_block = "".join(first_model_lines)
+        
+        # 2. Parse using Meeko from the string block
+        pdbqt_mol = PDBQTMolecule(pdbqt_block, skip_typing=True)
+        
+        # 3. Convert to RDKit Mol
         rdkit_mol = pdbqt_mol.export_rdkit_mol()
         
         if rdkit_mol:
-            # Write to SDF (V3000 ensures 3D coords are handled well)
+            # 4. Write to SDF
+            # Ensure 3D conformation is preserved
             with Chem.SDWriter(str(output_sdf_path)) as w:
                 w.write(rdkit_mol)
             return True
+            
     except Exception as e:
         print(f"SDF Conversion Error: {e}")
+        
     return False
 
 def parse_vina_score_from_file(file_path):
@@ -502,8 +525,17 @@ def display_diabetes_docking_procedure():
                         st.write(f"Visualizing: **{selected_ligand}** bound to **{selected_target}**")
                         view_complex(str(receptor_file), str(sdf_viz_file))
                     else:
-                        st.warning("Conversion to SDF failed. Falling back to raw PDBQT visualization (bonds may be missing).")
-                        view_complex(str(receptor_file), str(docked_ligand_file))
+                        # Fallback: Create a temp PDBQT with ONLY the first pose
+                        st.warning("SDF conversion failed. Showing best pose in raw PDBQT format.")
+                        temp_1pose_pdbqt = docked_ligand_file.with_name(f"{docked_ligand_file.stem}_pose1.pdbqt")
+                        
+                        # Extract 1st pose manually for fallback
+                        with open(docked_ligand_file, 'r') as f_in, open(temp_1pose_pdbqt, 'w') as f_out:
+                            for line in f_in:
+                                f_out.write(line)
+                                if line.startswith("ENDMDL"): break
+                        
+                        view_complex(str(receptor_file), str(temp_1pose_pdbqt))
                 else:
                     st.error(f"Output file not found: {out_filename}. Did the docking finish successfully?")
         else:
